@@ -19,48 +19,86 @@ class node{
         }
 		isCompleteWord=iscom;
 	}
-    node(){
+    node(int from){
         //ch=c;
 		for(int i=0;i<26;i++){
             children[i]=nullptr;
         }
-        
+        fromFile.push_back(from);
+        isComplete.push_back(false);
 		isCompleteWord=false;
     }
+    void record(int from,int isCom){
+        if(fromFile.back()==from){
+            if(isCom){
+                isComplete.pop_back();
+                isComplete.push_back(true);
+            }
+        }
+        else{
+            fromFile.push_back(from);
+            isComplete.push_back(isCom);
+        }
+    }
+    vector<int>exactcompare(){
+        list<int>::iterator i=fromFile.begin();
+        list<bool>::iterator j=isComplete.begin();
+        vector<int>res;
+        while(i!=fromFile.end()){
+            if(*j==true)res.push_back(*i);
+            i++;
+            j++;
+        }
+        return res;
+    }
+    vector<int>pre_compare(){
+        list<int>::iterator i=fromFile.begin();
+        vector<int>res;
+        while(i!=fromFile.end()){
+            res.push_back(*i);
+            i++;
+        }
+        return res;
+    }
 	private:
-	//char ch;
 	node* children[26];
 	bool isCompleteWord;
-    //list<int> fromFile;
-    //list<bool> isComplete;
+    list<int> fromFile;
+    list<bool> isComplete;
 };
 class Trie{
 	public:
 	Trie(){
 		root=new node('0',false);
 	}
-	void insert(string str){
+	void insert(string str,int from){
         node* ptr=root;
         for (int i = 0; i < str.length(); i++){
             int index = str[i] - 'a';
-            if (!ptr->children[index]) ptr->children[index] = new node();
+            if (!ptr->children[index]) ptr->children[index] = new node(from);
+            else{
+                ptr->children[index]->record(from,false);
+            }
                 ptr = ptr->children[index];
         }
         ptr->isCompleteWord = true;
+        ptr->isComplete.pop_back();
+        ptr->isComplete.push_back(true);
         
     }
-    bool exact_search(string str){
+    vector<int> exact_search(string str){
         node *ptr = root;
- 
+        vector<int> empty;
         for (int i = 0; i < str.length(); i++){
             int index = str[i] - 'a';
-            if (!ptr->children[index]) return false;
+            if (!ptr->children[index]) return empty;
             
             ptr = ptr->children[index];
             //char k=index+'a';
             //cout<<k;
         }
-        return (ptr->isCompleteWord);
+        //for(list<int>::iterator i=ptr->fromFile.begin(),list<bool>::iterator j=ptr->isComplete.begin();i!=)
+        return ptr->exactcompare();
     }
     bool prefix_search(string str){
         node *ptr = root;
@@ -93,7 +131,7 @@ class Trie{
 	private:
 	node* root;
 
-    void destroy(node *rt){
+void destroy(node *rt){
         for(auto it:rt->children){
             if(it)destroy(it);
         }
@@ -110,32 +148,6 @@ string tolower(string str){
     return str;
 }
 
-/*
-int main(void){
-
-    Trie tr;
-    Trie s_tr;
-    // Construct trie
-    string str,op;
-    while(cin>>op>>str){
-        
-        if(op[0]=='p'){
-            tr.prefix_search(str)? cout << "Yes\n" :cout << "No\n";
-        }
-        else if(op[0]=='e'){
-            tr.exact_search(str)? cout << "Yes\n" :cout << "No\n";
-        }
-        else if(op[0]=='s'){
-            s_tr.prefix_search(reverse(str))? cout << "Yes\n" :cout << "No\n";
-        }
-        else if(op[0]=='0'){
-            s_tr.insert(reverse(str));
-            tr.insert(str);
-        }
-    }
-    return 0;
-    
-}*/
 string reverse(string str){
     string result;
     for(int i=str.length()-1;i>=0;i--){
