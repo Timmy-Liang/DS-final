@@ -11,38 +11,6 @@ using namespace std;
 // Utility Func
 
 // string parser : output vector of strings (words) after parsing
-vector<string> word_parse(vector<string> tmp_string){
-	vector<string> parse_string;
-	for(auto& word : tmp_string){
-		string new_str;
-    	for(auto &ch : word){
-			if(isalpha(ch))
-				new_str.push_back(ch);
-		}
-		parse_string.emplace_back(new_str);
-	}
-	return parse_string;
-}
-
-vector<string> split(const string& str, const string& delim) {
-	vector<string> res;
-	if("" == str) return res;
-	//先將要切割的字串從string型別轉換為char*型別
-	char * strs = new char[str.length() + 1] ; //不要忘了
-	strcpy(strs, str.c_str());
-
-	char * d = new char[delim.length() + 1];
-	strcpy(d, delim.c_str());
-
-	char *p = strtok(strs, d);
-	while(p) {
-		string s = p; //分割得到的字串轉換為string型別
-		res.push_back(s); //存入結果陣列
-		p = strtok(NULL, d);
-	}
-
-	return res;
-}
 
 
 int main(int argc, char *argv[]){
@@ -57,9 +25,6 @@ int main(int argc, char *argv[]){
 	string query = string(argv[2]);
 	string output = string(argv[3]);
 	// Read File & Parser Example
-	cout<<data_dir<<endl;
-	cout<<query<<endl;
-	cout<<output<<endl;
 	string file, title_name, tmp;
 	fstream fi;
 	vector<string> tmp_string;
@@ -70,22 +35,21 @@ int main(int argc, char *argv[]){
 	// eg : use 0.txt in data directory
 	int i=0;
 	while(1){
-		//if(i>=950)cout<<i<<endl;
-		//cout<<data_dir+to_string(i)+".txt"<<endl;
 		fi.open(data_dir+to_string(i)+".txt", ios::in);
 		if(!fi.is_open())break;
     // GET TITLENAME
-	getline(fi, title_name);
+		getline(fi, title_name);
 
     // GET TITLENAME WORD ARRAY
-    tmp_string = split(title_name, " ");
-	vector<string> title = word_parse(tmp_string);
-	for(auto &word : title){
-		//cout << word << endl;
-		string low=tolower(word);
-		tr.insert(low);
-		s_tr.insert(reverse(low));
-	}
+    	tmp_string = split(title_name, " ");
+		vector<string> title = word_parse(tmp_string);
+		for(auto &word : title){
+			//cout << word << endl;
+			string low=tolower(word);
+			//cout<<low<<endl;
+			tr.insert(low,i);
+			s_tr.insert(reverse(low),i);
+		}
 
     // GET CONTENT LINE BY LINE
 	while(getline(fi, tmp)){
@@ -94,10 +58,10 @@ int main(int argc, char *argv[]){
 		// PARSE CONTENT
 		vector<string> content = word_parse(tmp_string);
 		for(auto &word : content){
-			//cout << word << endl;
 			string low=tolower(word);
-			tr.insert(low);
-			s_tr.insert(reverse(low));
+			//cout<<low<<endl;
+			tr.insert(low,i);
+			s_tr.insert(reverse(low),i);
 		}
 		//......
 	}
@@ -107,23 +71,31 @@ int main(int argc, char *argv[]){
 	}
 
 	fi.open(query, ios::in);
+	
+	fstream ofs;
+	ofs.open(output,ios::out);
 	while(getline(fi,tmp)){
-		cout<<tmp<<endl;
+		//cout<<tmp<<endl;
 		int idx=0;
+		vector<int>tmpres;
+		vector<int>par;
+		int oper=0;
+		//0:no, 1:and, 2:or
 
 		while(idx<tmp.length()){
+			
 			if(tmp[idx]=='"'){
 				string tofind;
 				idx++;
-				while(tmp[idx]!='"'){
-					tofind+=tmp[idx];
-					idx++;
-				}
-				cout<<tofind<<endl;
-				cout<<tr.prefix_search(tofind)<<endl;
-				idx+=2;
+				while(tmp[idx]!='"') tofind+=tmp[idx],idx++;
 				
-				continue;
+				//cout<<tofind<<endl;
+				par=tr.exact_search(tofind);
+				idx+=2;
+				//for(int j=0;j<par.size();j++) cout<<par[j]<<" ";
+				//cout<<endl;
+				tmpres=setoper(tmpres,par,oper);
+				//continue;
 			}
 			else if(tmp[idx]=='*'){
 				string tofind;
@@ -132,20 +104,24 @@ int main(int argc, char *argv[]){
 					tofind+=tmp[idx];
 					idx++;
 				}
-				cout<<tofind<<endl;
-				cout<<s_tr.prefix_search(reverse(tofind))<<endl;
+				//cout<<tofind<<endl;
+				par=s_tr.prefix_search(reverse(tofind));
 				idx+=2;
-				
-				continue;
+				//for(int j=0;j<par.size();j++)cout<<par[j]<<" ";
+				//cout<<endl;
+				tmpres=setoper(tmpres,par,oper);
+				//continue;
 			}
 			else if(tmp[idx]=='/'){
 				idx+=2;
-				continue;
+				oper=2;
+				//continue;
 				
 			}
 			else if(tmp[idx]=='+'){
 				idx+=2;
-				continue;
+				oper=1;
+				//continue;
 			}
 			else{
 				string tofind;
@@ -153,19 +129,36 @@ int main(int argc, char *argv[]){
 					tofind+=tmp[idx];
 					idx++;
 				}
-				cout<<tofind<<endl;
-				cout<<tr.exact_search(tofind)<<endl;
+				//cout<<tofind<<endl;
+				par=tr.prefix_search(tofind);
 				idx+=1;
-				
+				//for(int j=0;j<par.size();j++)cout<<par[j]<<" ";
+				//cout<<endl;
+				tmpres=setoper(tmpres,par,oper);
 			}
+			
 		}
 		
-		
-		
+		fstream lookfi;
+		for(int i=0;i<tmpres.size();i++){
+			//cout<<tmpres[i]<<" ";
+			lookfi.open(data_dir+to_string(tmpres[i])+".txt", ios::in);
+			string title;
+			getline(lookfi,title);
+			lookfi.close();
+			ofs<<title<<endl;
+		}//cout<<endl;
+		if(tmpres.size()==0){
+			ofs<<"Not Found!"<<endl;
+		}
 	}
-	end=clock();
-	cout << (double)((end-start)/CLOCKS_PER_SEC)<<endl;
+	fi.close();
+	ofs.close();
+	tr.~Trie();
+	s_tr.~Trie();
 	
+	end=clock();
+	cout << (double)((double)(end-start)/CLOCKS_PER_SEC)<<endl;
 	/*string op,st;
 	while(cin>>op>>st){
 		if(op[0]=='p'){
